@@ -63,6 +63,22 @@ exports.callback = functions.https.onRequest(async (request, response) => {
 
 });
 
-exports.tweet = functions.https.onRequest((request, response) => {
-    
+exports.tweet = functions.https.onRequest(async (request, response) => {
+    const twitterClient = await createTC();
+
+    const { refreshToken } = (await dbRef.doc('access').get()).data();
+
+    const {
+        client: refreshedClient,
+        accessToken,
+        refreshToken: newRefreshToken,
+    } = await twitterClient.refreshOAuth2Token(refreshToken);
+
+    await dbRef.doc('access').set({ accessToken, refreshToken: newRefreshToken });
+
+    const nextTweet = 'Hello there. I\'m Tyler the Twitter Bot.'; //call quote api
+
+    const { data } = await refreshedClient.v2.tweet(nextTweet);
+    response.send(data);
+
 });
