@@ -1,5 +1,8 @@
+const fetch = require("node-fetch");
+
 const functions = require("firebase-functions");
 const admin = require('firebase-admin');
+const { https } = require("firebase-functions/v1");
 admin.initializeApp();
 
 const dbRef = admin.firestore().collection('tokens');
@@ -16,11 +19,22 @@ async function createTC(){
     return twitterClient;
 }
 
+async function getQuote(){
+    const response = await fetch('https://programming-quotes-api.herokuapp.com/Quotes/random');
+    const quoteJson = await response.json();
+    
+    
+    
+    return quoteJson;
+}
 
 const callbackURL = 'http://127.0.0.1:5000/tyler-76c59/us-central1/callback';
 
 exports.auth = functions.https.onRequest(async (request, response) => {
     const twitterClient = await createTC();
+
+    getQuote().then(json => console.log(json));
+
 
     const { url, codeVerifier, state } = twitterClient.generateOAuth2AuthLink(
         callbackURL,
