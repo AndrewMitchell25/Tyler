@@ -23,18 +23,15 @@ async function getQuote(){
     const response = await fetch('https://programming-quotes-api.herokuapp.com/Quotes/random');
     const quoteJson = await response.json();
     
+    let quote = "\"" + quoteJson["en"] + "\"" + "\n\t- " + quoteJson["author"];
     
-    
-    return quoteJson;
+    return quote;
 }
 
 const callbackURL = 'http://127.0.0.1:5000/tyler-76c59/us-central1/callback';
 
 exports.auth = functions.https.onRequest(async (request, response) => {
     const twitterClient = await createTC();
-
-    getQuote().then(json => console.log(json));
-
 
     const { url, codeVerifier, state } = twitterClient.generateOAuth2AuthLink(
         callbackURL,
@@ -56,6 +53,8 @@ exports.callback = functions.https.onRequest(async (request, response) => {
 
     const dbSnapshot = await dbRef.doc('data').get();
     const { codeVerifier, state: storedState } = dbSnapshot.data();
+
+    console.log(state);
 
     if (state != storedState) {
         return response.status(400).send('Stored tokens do not match!');
@@ -90,7 +89,10 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
 
     await dbRef.doc('access').set({ accessToken, refreshToken: newRefreshToken });
 
-    const nextTweet = 'Hello there. I\'m Tyler the Twitter Bot.'; //call quote api
+    //first ever tweet
+    //const nextTweet = 'Hello there. I\'m Tyler the Twitter Bot.';
+
+    const nextTweet = await getQuote();
 
     const { data } = await refreshedClient.v2.tweet(nextTweet);
     response.send(data);
