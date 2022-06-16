@@ -1,14 +1,13 @@
 const fetch = require("node-fetch");
-
 const functions = require("firebase-functions");
 const admin = require('firebase-admin');
 const { https } = require("firebase-functions/v1");
 admin.initializeApp();
 
-const dbRef = admin.firestore().collection('tokens');
+const dbTokens = admin.firestore().collection('tokens');
 
 async function createTC(){
-    const keys = await dbRef.doc('keys').get();
+    const keys = await dbTokens.doc('keys').get();
     const { clientID, clientSecret } = keys.data();
 
     const TwitterApi = require('twitter-api-v2').default;
@@ -40,7 +39,7 @@ exports.auth = functions.https.onRequest(async (request, response) => {
         
     
     //store verifier
-    await dbRef.doc('data').set({ codeVerifier, state });
+    await dbTokens.doc('data').set({ codeVerifier, state });
 
     response.redirect(url);
 
@@ -51,7 +50,7 @@ exports.callback = functions.https.onRequest(async (request, response) => {
 
     const { state, code } = request.query;
 
-    const dbSnapshot = await dbRef.doc('data').get();
+    const dbSnapshot = await dbTokens.doc('data').get();
     const { codeVerifier, state: storedState } = dbSnapshot.data();
 
     console.log(state);
@@ -70,7 +69,7 @@ exports.callback = functions.https.onRequest(async (request, response) => {
         redirectUri: callbackURL,
     });
 
-    await dbRef.doc('access').set({ accessToken, refreshToken });
+    await dbTokens.doc('access').set({ accessToken, refreshToken });
 
     response.sendStatus(200);
 
@@ -79,7 +78,7 @@ exports.callback = functions.https.onRequest(async (request, response) => {
 exports.tweet = functions.https.onRequest(async (request, response) => {
     const twitterClient = await createTC();
 
-    const { refreshToken } = (await dbRef.doc('access').get()).data();
+    const { refreshToken } = (await dbTokens.doc('access').get()).data();
 
     const {
         client: refreshedClient,
@@ -87,7 +86,7 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
         refreshToken: newRefreshToken,
     } = await twitterClient.refreshOAuth2Token(refreshToken);
 
-    await dbRef.doc('access').set({ accessToken, refreshToken: newRefreshToken });
+    await dbTokens.doc('access').set({ accessToken, refreshToken: newRefreshToken });
 
     //first ever tweet
     //const nextTweet = 'Hello there. I\'m Tyler the Twitter Bot.';
